@@ -7,6 +7,25 @@ export interface User {
   lastSeen?: Date;
 }
 
+export interface PollOption {
+  text: string;
+  votes: number;
+}
+
+export interface PollVote {
+  userId: string;
+  optionIndices: number[];
+  votedAt?: Date;
+}
+
+export interface PollMetadata {
+  question: string;
+  options: (PollOption | string)[];
+  allowMultiple?: boolean;
+  votes?: PollVote[]
+}
+
+
 export interface ChatMessage {
   _id?: string;
   senderId: string;
@@ -38,7 +57,7 @@ export interface Message {
     avatar: string;
   };
   content: string;
-  type: 'text' | 'image' | 'video' | 'file' | 'audio' | 'system';
+  type: 'text' | 'image' | 'video' | 'file' | 'audio' | 'system' | 'poll';
   fileMetadata?: {
     originalName: string;
     fileName: string;
@@ -46,6 +65,7 @@ export interface Message {
     mimeType: string;
     url: string;
   };
+  pollMetadata?: PollMetadata;
   isFormatted: boolean;
   timestamp: string;
   self: boolean;

@@ -1,0 +1,66 @@
+// poll-display.component.scss
+
+.poll-container {
+  min-width: 280px;
+  max-width: 100%;
+}
+
+.hover\:scale-102:hover {
+  transform: scale(1.02);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+// Smooth transitions for progress bars
+button {
+  &:disabled {
+    pointer-events: none;
+  }
+
+  &:not(:disabled):active {
+    transform: scale(0.98);
+  }
+}
+
+// Custom scrollbar for long option lists
+.poll-container {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+// Ensure text doesn't wrap awkwardly
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Tabular numbers for consistent percentage display
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

@@ -17,7 +17,15 @@ import { EmojiPickerComponent } from '../emoji/emoji-picker.component';
 import { MessageFormatterService } from './service/messageFormat.service';
 import { environment } from '../../../environments/environment';
 import { NotificationModalComponent } from '../../../core/shared/modals/notification-modal.component';
-import { Chat, GroupChat, Member, Message, User } from '../models/user.model';
+import {
+  Chat,
+  GroupChat,
+  Member,
+  Message,
+  PollMetadata,
+  User,
+} from '../models/user.model';
+import { PollComponent } from '../poll/poll.component';
 
 @Component({
   selector: 'app-chat',
@@ -28,6 +36,7 @@ import { Chat, GroupChat, Member, Message, User } from '../models/user.model';
     CommonModule,
     EmojiPickerComponent,
     NotificationModalComponent,
+    PollComponent,
   ],
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
@@ -44,7 +53,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   searchTerm: string = '';
   isRemovedFromGroup: boolean = false;
   validationMessage: string = '';
-
 
   showEmojiPicker: boolean = false;
 
@@ -79,6 +87,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   modalShowCancel: boolean = false;
   modalConfirmText: string = 'OK';
   modalAction: (() => void) | null = null;
+
+  showPollModal: boolean = false;
+  pollQuestion = '';
+  pollOptions: string[] = ['', '', ''];
+  allowMultiple: boolean = false;
 
   private subscriptions: Subscription[] = [];
 
@@ -164,6 +177,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
           this.socketService.newGroup$.subscribe((group) => {
             console.log('👥 New group notification:', group);
             this.loadChats();
+          })
+        );
+
+        this.subscriptions.push(
+          this.socketService.pollUpdated$.subscribe((updatedMsg) => {
+            this.updateMessageInList(updatedMsg);
           })
         );
 
@@ -296,8 +315,82 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     return 'New message';
   }
 
+  onPollCreated(pollData: PollMetadata): void {
+    if (!this.selectedChat) return;
+
+    console.log('📊 Creating poll:', pollData);
+
+    this.socketService.createPoll(
+      this.selectedChat._id,
+      this.currentUser._id,
+      pollData.question,
+      pollData.options,
+      pollData.allowMultiple || false
+    );
+
+    this.closePollModal();
+  }
+
+  openPollModal(): void {
+    this.showPollModal = true;
+  }
+
+  closePollModal(): void {
+    this.showPollModal = false;
+  }
+
+  isPollMessage(msg: Message): boolean {
+    return msg.type === 'poll' && !!msg.pollMetadata;
+  }
+
+  getPollVoteCount(msg: Message, optionIndex: number): number {
+    if (!msg.pollMetadata?.votes) return 0;
+    return msg.pollMetadata.votes.filter((v: any) =>
+      v.optionIndices.includes(optionIndex)
+    ).length;
+  }
+
+  getPollTotalVotes(msg: Message): number {
+    return msg.pollMetadata?.votes?.length || 0;
+  }
+
+  getPollVotePercentage(msg: Message, optionIndex: number): number {
+    const total = this.getPollTotalVotes(msg);
+    if (total === 0) return 0;
+    const count = this.getPollVoteCount(msg, optionIndex);
+    return Math.round((count / total) * 100);
+  }
+
+  hasVotedInPoll(msg: Message): boolean {
+    if (!msg.pollMetadata?.votes) return false;
+    return msg.pollMetadata.votes.some(
+      (v: any) => v.userId === this.currentUser._id
+    );
+  }
+
+  userVotedForOption(msg: Message, optionIndex: number): boolean {
+    if (!msg.pollMetadata?.votes) return false;
+    const userVote = msg.pollMetadata.votes.find(
+      (v: any) => v.userId === this.currentUser._id
+    );
+    return userVote?.optionIndices.includes(optionIndex) || false;
+  }
+
+  votePoll(messageId: string, optionIndex: number): void {
+    console.log('🗳️ Voting on poll:', { messageId, optionIndex });
+    this.socketService.vote(messageId, optionIndex, this.currentUser._id);
+  }
+
   onSearchChange(): void {
     this.loadChats();
+  }
+
+  updateMessageInList(updated: any) {
+    console.log('updated', updated);
+    const index = this.messages.findIndex((n) => n._id === updated._id);
+    if (index !== -1) {
+      this.messages[index] = updated;
+    }
   }
 
   ngAfterViewInit() {
@@ -372,6 +465,21 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       },
     });
   }
+
+  togglePollModal() {
+    if (!this.selectedChat?.isGroup) {
+      this.showModal(
+        'Polls Unavailable',
+        'Polls can only be created in group chats',
+        'info'
+      );
+      return;
+    }
+
+    this.showPollModal = !this.showPollModal;
+  }
+
+  // createPoll(pollData: Poll)
 
   getMemberId(member: User): string {
     console.log('member fine', member);
@@ -839,49 +947,47 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-isCreateDisabled(): boolean {
-  this.validationMessage = ''; // reset
+  isCreateDisabled(): boolean {
+    this.validationMessage = ''; // reset
 
-  if (this.isLoading) {
-    this.validationMessage = 'Creating chat, please wait...';
-    return true;
+    if (this.isLoading) {
+      this.validationMessage = 'Creating chat, please wait...';
+      return true;
+    }
+
+    if (this.selectedUsers.length === 0) {
+      this.validationMessage = 'Select at least one member.';
+      return true;
+    }
+
+    if (this.newChatType === 'group') {
+      if (!this.groupChatName || this.groupChatName.trim().length === 0) {
+        this.validationMessage = 'Group name cannot be empty.';
+        return true;
+      }
+
+      const trimmed = this.groupChatName.trim();
+
+      if (trimmed.length < 3) {
+        this.validationMessage = 'Group name must be at least 3 characters.';
+        return true;
+      }
+
+      if (trimmed.length > 10) {
+        this.validationMessage = 'Group name cannot exceed 10 characters.';
+        return true;
+      }
+
+      const validPattern = /^[A-Za-z0-9 ]+$/;
+      if (!validPattern.test(trimmed)) {
+        this.validationMessage =
+          'Group name can only contain letters, numbers, and spaces.';
+        return true;
+      }
+    }
+
+    return false;
   }
-
-  if (this.selectedUsers.length === 0) {
-    this.validationMessage = 'Select at least one member.';
-    return true;
-  }
-
-  if (this.newChatType === 'group') {
-
-    if (!this.groupChatName || this.groupChatName.trim().length === 0) {
-      this.validationMessage = 'Group name cannot be empty.';
-      return true;
-    }
-
-    const trimmed = this.groupChatName.trim();
-
-    if (trimmed.length < 3) {
-      this.validationMessage = 'Group name must be at least 3 characters.';
-      return true;
-    }
-
-    if (trimmed.length > 10) {
-      this.validationMessage = 'Group name cannot exceed 10 characters.';
-      return true;
-    }
-
-    const validPattern = /^[A-Za-z0-9 ]+$/;
-    if (!validPattern.test(trimmed)) {
-      this.validationMessage =
-        'Group name can only contain letters, numbers, and spaces.';
-      return true;
-    }
-  }
-
-  return false; 
-}
-
 
   getChatDisplayName(chat: Chat): string {
     if (chat.isGroup) {
@@ -895,7 +1001,6 @@ isCreateDisabled(): boolean {
   }
 
   getChatAvatar(chat: GroupChat): string {
-    
     if (chat.isGroup) {
       return chat.name?.charAt(0).toUpperCase() || 'G';
     }

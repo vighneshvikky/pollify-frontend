@@ -14,6 +14,14 @@ export interface UserJoinedData {
   username: string;
 }
 
+export interface CreatePollData {
+  chatId: string;
+  senderId: string;
+  question: string;
+  options: string[];
+}
+
+
 export interface MessageSentData {
   messageId: string;
   chatId: string;

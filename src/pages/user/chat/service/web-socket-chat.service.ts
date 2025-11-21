@@ -2,8 +2,17 @@ import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import {  RoomJoinedData, UserJoinedData, MessageSentData, MessageError, GroupChat, UserAddedToGroup, UserRemovedFromGroup, PrivateChat } from '../../models/socket-events.model';
-import { Message } from '../../models/user.model';
+import {
+  RoomJoinedData,
+  UserJoinedData,
+  MessageSentData,
+  MessageError,
+  GroupChat,
+  UserAddedToGroup,
+  UserRemovedFromGroup,
+  PrivateChat,
+} from '../../models/socket-events.model';
+import { Message, PollOption } from '../../models/user.model';
 
 export interface FileMetadata {
   originalName: string;
@@ -15,37 +24,33 @@ export interface FileMetadata {
 
 @Injectable({
   providedIn: 'root',
-})  
+})
 export class SocketService {
   private socket!: Socket;
   public isConnected$ = new BehaviorSubject<boolean>(false);
   private currentUserId: string = '';
 
+  private newMessageSubject = new Subject<Message>();
+  private roomJoinedSubject = new Subject<RoomJoinedData>();
+  private userJoinedSubject = new Subject<UserJoinedData>();
+  private messageSentSubject = new Subject<MessageSentData>();
+  private messageErrorSubject = new Subject<MessageError>();
 
-private newMessageSubject = new Subject<Message>();
-private roomJoinedSubject = new Subject<RoomJoinedData>();
-private userJoinedSubject = new Subject<UserJoinedData>();
-private messageSentSubject = new Subject<MessageSentData>();
-private messageErrorSubject = new Subject<MessageError>();
-
-
- private newGroupSubject = new Subject<GroupChat>();
-private groupCreatedSubject = new Subject<GroupChat>();
-private addedToGroupSubject = new Subject<GroupChat>();
-private userAddedToGroupSubject = new Subject<UserAddedToGroup>();
-private userRemovedFromGroupSubject = new Subject<UserRemovedFromGroup>();
-private removedFromGroupSubject = new Subject<UserRemovedFromGroup>();
-
-private privateChatCreatedSubject = new Subject<PrivateChat>();
+  private newGroupSubject = new Subject<GroupChat>();
+  private groupCreatedSubject = new Subject<GroupChat>();
+  private addedToGroupSubject = new Subject<GroupChat>();
+  private userAddedToGroupSubject = new Subject<UserAddedToGroup>();
+  private userRemovedFromGroupSubject = new Subject<UserRemovedFromGroup>();
+  private removedFromGroupSubject = new Subject<UserRemovedFromGroup>();
+  private privateChatCreatedSubject = new Subject<PrivateChat>();
+  private pollUpdatedSubject = new Subject<any>();
 
   public newMessage$ = this.newMessageSubject.asObservable();
   public roomJoined$ = this.roomJoinedSubject.asObservable();
   public userJoined$ = this.userJoinedSubject.asObservable();
   public messageSent$ = this.messageSentSubject.asObservable();
   public messageError$ = this.messageErrorSubject.asObservable();
-
-   
-  
+  public pollUpdated$ = this.pollUpdatedSubject.asObservable();
 
   public removedFromGroup$ = this.removedFromGroupSubject.asObservable();
 
@@ -68,8 +73,6 @@ private privateChatCreatedSubject = new Subject<PrivateChat>();
     if (userId) {
       this.currentUserId = userId;
     }
-
-   
 
     this.socket = io(environment.socketUrl, {
       transports: ['websocket'],
@@ -123,9 +126,6 @@ private privateChatCreatedSubject = new Subject<PrivateChat>();
       this.newMessageSubject.next(message);
     });
 
-
-
-   
     this.socket.on('newGroup', (group) => {
       console.log('👥 New group received:', group);
       this.newGroupSubject.next(group);
@@ -161,15 +161,17 @@ private privateChatCreatedSubject = new Subject<PrivateChat>();
       this.privateChatCreatedSubject.next(data);
     });
 
-        this.socket.on('removedFromGroup', (data) => {
+    this.socket.on('removedFromGroup', (data) => {
       console.log('🚫 Removed from group:', data);
       this.removedFromGroupSubject.next(data);
     });
 
+    this.socket.on('pollUpdated', (updatedMsg) => {
+      console.log('Poll updated received:', updatedMsg);
+      this.pollUpdatedSubject.next(updatedMsg);
+    });
 
     console.log('✅ All socket event listeners set up');
-
-
   }
 
   joinRoom(chatId: string, userId: string) {
@@ -241,10 +243,51 @@ private privateChatCreatedSubject = new Subject<PrivateChat>();
     this.socket.emit('addUserToGroup', { chatId, userId, addedBy });
   }
 
-  removeUserFromGroup(chatId: string | undefined, userId: string, removedBy: string) {
+  removeUserFromGroup(
+    chatId: string | undefined,
+    userId: string,
+    removedBy: string
+  ) {
     if (!this.socket) return;
 
     this.socket.emit('removeUserFromGroup', { chatId, userId, removedBy });
+  }
+
+ vote(messageId: string, optionIndex: number, userId: string) {
+  if (!this.socket || !this.socket.connected) {
+    console.error('❌ Socket not connected');
+    return;
+  }
+
+  console.log('🗳️ Voting on poll:', { messageId, optionIndex, userId });
+
+  this.socket.emit('vote', { messageId, optionIndex, userId });
+}
+
+
+  createPoll(
+    chatId: string,
+    senderId: string,
+    question: string,
+    options: (string  | PollOption)[],
+    allowMultiple: boolean
+  ) {
+    if (!this.socket || !this.socket.connected) {
+      console.error('❌ Socket not connected');
+      return;
+    }
+
+    const payload = {
+      chatId,
+      senderId,
+      question,
+      options,
+      allowMultiple
+    };
+
+    console.log('📤 Emitting createPoll:', payload);
+
+    this.socket.emit('createPoll', payload);
   }
 
   emitTyping(chatId: string, userId: string, username: string) {

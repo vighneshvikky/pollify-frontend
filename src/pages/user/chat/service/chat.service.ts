@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -22,10 +21,8 @@ export interface CreateGroupChatDto {
 })
 export class ChatService {
   private apiUrl = `${environment.apiUrl}${API_ROUTES.CHAT.BASE}`;
-  
 
   constructor(private http: HttpClient) {}
-
 
   createPrivateChat(userId: string, participantId: string): Observable<Chat> {
     return this.http.post<Chat>(
@@ -38,13 +35,11 @@ export class ChatService {
     );
   }
 
-
   createGroupChat(
     name: string,
     members: string[],
     userId: string
   ): Observable<Chat> {
-   
     return this.http.post<Chat>(
       `${this.apiUrl}${API_ROUTES.CHAT.GROUP}`,
       {
@@ -55,7 +50,6 @@ export class ChatService {
       { withCredentials: true }
     );
   }
-
 
   getUserChats(userId: string, search: string): Observable<Chat[]> {
     let url = `${this.apiUrl}?userId=${userId}`;
@@ -73,14 +67,17 @@ export class ChatService {
     );
   }
 
-
   getChat(chatId: string): Observable<Chat> {
-    return this.http.get<Chat>(`${this.apiUrl}${API_ROUTES.CHAT.GET_CHAT(chatId)}`, {
-      withCredentials: true,
-    });
+    return this.http.get<Chat>(
+      `${this.apiUrl}${API_ROUTES.CHAT.GET_CHAT(chatId)}`,
+      {
+        withCredentials: true,
+      }
+    );
   }
 
  
+
   joinChat(chatId: string, userId: string): Observable<Chat> {
     return this.http.post<Chat>(
       `${this.apiUrl}${API_ROUTES.CHAT.JOIN(chatId)}`,
@@ -89,7 +86,6 @@ export class ChatService {
     );
   }
 
- 
   leaveChat(chatId: string, userId: string): Observable<Chat> {
     return this.http.post<Chat>(
       `${this.apiUrl}${API_ROUTES.CHAT.LEAVE(chatId)}`,

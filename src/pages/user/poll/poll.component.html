@@ -1,0 +1,143 @@
+<div
+  *ngIf="isVisible"
+  class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+  (click)="cancel()"
+>
+  <div
+    class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div
+      class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-t-2xl flex-shrink-0"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <h3 class="text-xl font-bold">Create Poll</h3>
+        </div>
+        <button
+          (click)="cancel()"
+          class="p-1 hover:bg-white/20 rounded-lg transition-all"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="p-6 space-y-4 overflow-y-auto flex-1">
+      <!-- Question Input -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Question
+          <span class="text-red-500">*</span>
+        </label>
+        <textarea
+          [(ngModel)]="pollQuestion"
+          placeholder="What would you like to ask?"
+          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+          rows="2"
+          [maxlength]="MAX_QUESTION_LENGTH"
+        ></textarea>
+        <div class="flex justify-between mt-1">
+          <span class="text-xs text-gray-500">{{ questionCharCount }}</span>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="block text-sm font-semibold text-gray-700">
+            Options
+            <span class="text-red-500">*</span>
+          </label>
+          <span class="text-xs text-gray-500">{{ optionCount }}</span>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            *ngFor="let option of pollOptions; let i = index; trackBy: trackByIndex"
+            class="flex items-center gap-2"
+          >
+            <div class="flex-1 relative">
+              <input
+                type="text"
+                [(ngModel)]="pollOptions[i]"
+                [placeholder]="'Option ' + (i + 1)"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                [maxlength]="MAX_OPTION_LENGTH"
+              />
+            </div>
+            <button
+              *ngIf="canRemoveOption"
+              (click)="removeOption(i)"
+              class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="Remove option"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button
+          *ngIf="canAddOption"
+          (click)="addOption()"
+          class="mt-3 w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-purple-500 hover:text-purple-500 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+          </svg>
+          Add Option
+        </button>
+      </div>
+
+      <!-- Allow Multiple Votes -->
+      <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+        <input
+          type="checkbox"
+          id="allowMultiple"
+          [(ngModel)]="allowMultiple"
+          class="w-5 h-5 text-purple-500 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
+        />
+        <label for="allowMultiple" class="text-sm text-gray-700 cursor-pointer">
+          Allow multiple votes per person
+        </label>
+      </div>
+
+      <!-- Validation Error -->
+      <div
+        *ngIf="validationError"
+        class="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2"
+      >
+        <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+        </svg>
+        <p class="text-sm text-red-800">{{ validationError }}</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-6 border-t border-gray-200 flex gap-3 flex-shrink-0">
+      <button
+        (click)="cancel()"
+        class="flex-1 px-4 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        (click)="createPoll()"
+        class="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
+      >
+        Create Poll
+      </button>
+    </div>
+  </div>
+</div>

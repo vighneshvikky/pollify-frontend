@@ -156,15 +156,15 @@
               <div class="flex items-center justify-between">
                 <p class="text-xs text-gray-500 truncate flex-1">
                   <!--  
-                  <span
-                    *ngIf="
-                      chat.lastMessage?.senderId &&
-                      chat.lastMessage?.senderId !== currentUser._id &&
-                      chat.isGroup
-                    "
-                    class="text-gray-600 font-medium"
-                    >{{ chat.lastMessage?.senderId }}:
-                  </span> -->
+                    <span
+                      *ngIf="
+                        chat.lastMessage?.senderId &&
+                        chat.lastMessage?.senderId !== currentUser._id &&
+                        chat.isGroup
+                      "
+                      class="text-gray-600 font-medium"
+                      >{{ chat.lastMessage?.senderId }}:
+                    </span> -->
                   {{ getLastMessagePreview(chat) }}
                 </p>
               </div>
@@ -566,6 +566,18 @@
                   </p>
                 </div>
 
+                <div *ngIf="msg.type === 'poll' && msg.pollMetadata">
+                  <h4>{{ msg.pollMetadata.question }}</h4>
+
+                  <div
+                    *ngFor="let opt of msg.pollMetadata.options; let i = index"
+                  >
+                    <!-- <button (click)="vote(msg._id, i)">
+                        {{ opt.text }} — {{ opt.votes }}
+                      </button> -->
+                  </div>
+                </div>
+
                 <!-- Video Message -->
                 <div *ngIf="isVideoMessage(msg)" class="space-y-2">
                   <video
@@ -597,10 +609,144 @@
                   </p>
                 </div>
 
+                <!-- Poll Message -->
+                <div *ngIf="isPollMessage(msg)" class="space-y-3">
+                  <div
+                    class="font-semibold text-sm mb-2 flex items-center gap-2"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                    {{ msg.pollMetadata?.question }}
+                  </div>
+
+                  <div class="space-y-2">
+                    <div
+                      *ngFor="
+                        let option of msg.pollMetadata?.options;
+                        let i = index
+                      "
+                      class="relative"
+                    >
+                      <button
+                        (click)="votePoll(msg._id, i)"
+                        [disabled]="hasVotedInPoll(msg)"
+                        class="w-full text-left p-3 rounded-lg transition-all relative overflow-hidden"
+                        [ngClass]="{
+                          'hover:bg-white/30 cursor-pointer':
+                            msg.self && !hasVotedInPoll(msg),
+                          'hover:bg-gray-200 cursor-pointer':
+                            !msg.self && !hasVotedInPoll(msg),
+                          'cursor-not-allowed': hasVotedInPoll(msg)
+                        }"
+                      >
+                        <!-- Background progress bar -->
+                        <div
+                          *ngIf="getPollTotalVotes(msg) > 0"
+                          class="absolute inset-0 rounded-lg transition-all duration-500 ease-out"
+                          [ngClass]="msg.self ? 'bg-white/20' : 'bg-purple-100'"
+                          [style.width.%]="getPollVotePercentage(msg, i)"
+                        ></div>
+
+                        <!-- Content -->
+                        <div
+                          class="relative z-10 flex items-center justify-between"
+                        >
+                          <div class="flex items-center gap-2 flex-1">
+                            <!-- Check mark for user's vote -->
+                            <svg
+                              *ngIf="userVotedForOption(msg, i)"
+                              class="w-5 h-5 flex-shrink-0"
+                              [ngClass]="
+                                msg.self ? 'text-white' : 'text-green-600'
+                              "
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              />
+                            </svg>
+
+                            <span class="text-sm font-medium">{{
+                              option
+                            }}</span>
+                          </div>
+
+                          <!-- Vote count and percentage -->
+                          <div class="flex items-center gap-2 ml-2">
+                            <span class="text-xs font-semibold">
+                              {{ getPollVoteCount(msg, i) }}
+                            </span>
+                            <span
+                              *ngIf="getPollTotalVotes(msg) > 0"
+                              class="text-xs opacity-75"
+                            >
+                              ({{ getPollVotePercentage(msg, i) }}%)
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Poll footer -->
+                  <div
+                    class="flex items-center justify-between text-xs opacity-75 mt-3 pt-2 border-t"
+                    [ngClass]="msg.self ? 'border-white/20' : 'border-gray-200'"
+                  >
+                    <div class="flex items-center gap-1">
+                      <svg
+                        class="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"
+                        />
+                      </svg>
+                      <span>
+                        {{ getPollTotalVotes(msg) }}
+                        {{ getPollTotalVotes(msg) === 1 ? "vote" : "votes" }}
+                      </span>
+                    </div>
+
+                    <span
+                      *ngIf="msg.pollMetadata?.allowMultiple"
+                      class="flex items-center gap-1"
+                    >
+                      <svg
+                        class="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      Multiple votes allowed
+                    </span>
+                  </div>
+                </div>
+
                 <!-- Timestamp -->
                 <!-- <div class="text-xs opacity-75 mt-2 text-right">
-                  {{ msg.createdAt | date : "short" }}
-                </div> -->
+                    {{ msg.createdAt | date : "short" }}
+                  </div> -->
               </div>
             </div>
           </div>
@@ -679,6 +825,30 @@
 
           <!-- Input Area -->
           <div class="flex items-end space-x-3">
+            <!-- Poll Button (NEW - Add this) -->
+            <button
+              (click)="openPollModal()"
+              [disabled]="isRemovedFromGroup"
+              [class.opacity-50]="isRemovedFromGroup"
+              [class.cursor-not-allowed]="isRemovedFromGroup"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 rounded-xl transition-colors disabled:hover:bg-gray-100 flex items-center space-x-1"
+              title="Create poll"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              <span class="text-sm font-medium hidden sm:inline">Poll</span>
+            </button>
             <!-- File Upload Button -->
             <button
               (click)="triggerFileUpload()"
@@ -925,9 +1095,8 @@
             class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
           />
           <div *ngIf="validationMessage" class="text-red-500 text-sm mt-2">
-  {{ validationMessage }}
-</div>
-
+            {{ validationMessage }}
+          </div>
         </div>
 
         <div>
@@ -1001,3 +1170,11 @@
   (closed)="modalVisible = false"
 >
 </app-notification-modal>
+
+<!-- Poll Creation Modal - Replace entire section -->
+<app-poll
+  [isVisible]="showPollModal"
+  (pollCreated)="onPollCreated($event)"
+  (cancelled)="closePollModal()"
+>
+</app-poll>
