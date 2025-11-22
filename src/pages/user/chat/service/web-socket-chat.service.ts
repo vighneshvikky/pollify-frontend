@@ -12,7 +12,12 @@ import {
   UserRemovedFromGroup,
   PrivateChat,
 } from '../../models/socket-events.model';
-import { Message, PollOption } from '../../models/user.model';
+import {
+  Message,
+  PollMetadata,
+  PollOption,
+  PollVote,
+} from '../../models/user.model';
 
 export interface FileMetadata {
   originalName: string;
@@ -43,7 +48,7 @@ export class SocketService {
   private userRemovedFromGroupSubject = new Subject<UserRemovedFromGroup>();
   private removedFromGroupSubject = new Subject<UserRemovedFromGroup>();
   private privateChatCreatedSubject = new Subject<PrivateChat>();
-  private pollUpdatedSubject = new Subject<any>();
+  private pollUpdatedSubject = new Subject<Message>();
 
   public newMessage$ = this.newMessageSubject.asObservable();
   public roomJoined$ = this.roomJoinedSubject.asObservable();
@@ -253,23 +258,22 @@ export class SocketService {
     this.socket.emit('removeUserFromGroup', { chatId, userId, removedBy });
   }
 
- vote(messageId: string, optionIndex: number, userId: string) {
-  if (!this.socket || !this.socket.connected) {
-    console.error('❌ Socket not connected');
-    return;
+  vote(messageId: string, optionIndex: number, userId: string) {
+    if (!this.socket || !this.socket.connected) {
+      console.error('❌ Socket not connected');
+      return;
+    }
+
+    console.log('🗳️ Voting on poll:', { messageId, optionIndex, userId });
+
+    this.socket.emit('vote', { messageId, optionIndex, userId });
   }
-
-  console.log('🗳️ Voting on poll:', { messageId, optionIndex, userId });
-
-  this.socket.emit('vote', { messageId, optionIndex, userId });
-}
-
 
   createPoll(
     chatId: string,
     senderId: string,
     question: string,
-    options: (string  | PollOption)[],
+    options: (string | PollOption)[],
     allowMultiple: boolean
   ) {
     if (!this.socket || !this.socket.connected) {
@@ -282,7 +286,7 @@ export class SocketService {
       senderId,
       question,
       options,
-      allowMultiple
+      allowMultiple,
     };
 
     console.log('📤 Emitting createPoll:', payload);

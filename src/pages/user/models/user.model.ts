@@ -14,17 +14,15 @@ export interface PollOption {
 
 export interface PollVote {
   userId: string;
-  optionIndices: number[];
+  optionIndex: number[];
   votedAt?: Date;
 }
 
 export interface PollMetadata {
   question: string;
-  options: (PollOption | string)[];
+  options: { text: string; votes: number }[];
   allowMultiple?: boolean;
-  votes?: PollVote[]
 }
-
 
 export interface ChatMessage {
   _id?: string;
@@ -66,6 +64,12 @@ export interface Message {
     url: string;
   };
   pollMetadata?: PollMetadata;
+  pollVotes?: {
+    userId: string;
+    optionIndices: number[];
+    votedAt: string;
+  }[];
+
   isFormatted: boolean;
   timestamp: string;
   self: boolean;
@@ -111,10 +115,6 @@ export enum ModalMessage {
 }
 
 export interface UploadResponse {
-  success: boolean,
-  messsage: Message
+  success: boolean;
+  messsage: Message;
 }
-
-
-
-

@@ -91,7 +91,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   showPollModal: boolean = false;
   pollQuestion = '';
   pollOptions: string[] = ['', '', ''];
-  allowMultiple: boolean = false;
+  allowMultiple: boolean = false
 
   private subscriptions: Subscription[] = [];
 
@@ -311,6 +311,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     if (lastMsg.type === 'video') return '🎥 Video';
     if (lastMsg.type === 'audio') return '🎵 Audio';
     if (lastMsg.type === 'file') return '📎 File';
+    if(lastMsg.type === 'poll') return  `📊 Poll`
 
     return 'New message';
   }
@@ -344,37 +345,34 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getPollVoteCount(msg: Message, optionIndex: number): number {
-    if (!msg.pollMetadata?.votes) return 0;
-    return msg.pollMetadata.votes.filter((v: any) =>
-      v.optionIndices.includes(optionIndex)
-    ).length;
+return msg.pollMetadata?.options[optionIndex]?.votes || 0;
   }
 
   getPollTotalVotes(msg: Message): number {
-    return msg.pollMetadata?.votes?.length || 0;
+  if (!msg.pollMetadata?.options) return 0;
+  return msg.pollMetadata.options.reduce((sum, opt) => sum + opt.votes, 0);
   }
 
-  getPollVotePercentage(msg: Message, optionIndex: number): number {
-    const total = this.getPollTotalVotes(msg);
-    if (total === 0) return 0;
-    const count = this.getPollVoteCount(msg, optionIndex);
-    return Math.round((count / total) * 100);
-  }
+ getPollVotePercentage(msg: Message, optionIndex: number): number {
+  const total = this.getPollTotalVotes(msg);
+  if (total === 0) return 0;
 
-  hasVotedInPoll(msg: Message): boolean {
-    if (!msg.pollMetadata?.votes) return false;
-    return msg.pollMetadata.votes.some(
-      (v: any) => v.userId === this.currentUser._id
-    );
-  }
+  const optionVotes = this.getPollVoteCount(msg, optionIndex);
+  return Math.round((optionVotes / total) * 100);
+}
 
-  userVotedForOption(msg: Message, optionIndex: number): boolean {
-    if (!msg.pollMetadata?.votes) return false;
-    const userVote = msg.pollMetadata.votes.find(
-      (v: any) => v.userId === this.currentUser._id
-    );
-    return userVote?.optionIndices.includes(optionIndex) || false;
-  }
+
+hasVotedInPoll(msg: Message): boolean {
+  return msg.pollVotes?.some(v => v.userId === this.currentUser._id) || false;
+}
+
+
+ userVotedForOption(msg: Message, optionIndex: number): boolean {
+  return msg.pollVotes?.some(v => 
+    v.userId === this.currentUser._id && v.optionIndices.includes(optionIndex)
+  ) || false;
+}
+
 
   votePoll(messageId: string, optionIndex: number): void {
     console.log('🗳️ Voting on poll:', { messageId, optionIndex });
@@ -385,7 +383,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.loadChats();
   }
 
-  updateMessageInList(updated: any) {
+  updateMessageInList(updated: Message) {
     console.log('updated', updated);
     const index = this.messages.findIndex((n) => n._id === updated._id);
     if (index !== -1) {

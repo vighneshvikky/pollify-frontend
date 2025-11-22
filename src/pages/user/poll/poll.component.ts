@@ -104,15 +104,20 @@ export class PollComponent {
       return;
     }
 
-    const validOptions = this.pollOptions
-      .map((opt) => opt.trim())
-      .filter((opt) => opt.length > 0);
+ const validOptions = this.pollOptions
+  .map((opt) => opt.trim())
+  .filter((opt) => opt.length > 0)
+  .map((opt) => ({
+    text: opt,
+    votes: 0
+  }));
 
-    const pollData: PollMetadata = {
-      question: this.pollQuestion.trim(),
-      options: validOptions,
-      allowMultiple: this.allowMultiple,
-    };
+const pollData: PollMetadata = {
+  question: this.pollQuestion.trim(),
+  options: validOptions, 
+  allowMultiple: this.allowMultiple,
+};
+
 
     this.pollCreated.emit(pollData);
     this.resetForm();

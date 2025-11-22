@@ -638,19 +638,24 @@
                       "
                       class="relative"
                     >
+                      <!-- Replace the poll option button section -->
                       <button
                         (click)="votePoll(msg._id, i)"
-                        [disabled]="hasVotedInPoll(msg)"
-                        class="w-full text-left p-3 rounded-lg transition-all relative overflow-hidden"
+                        [disabled]="isRemovedFromGroup"
+                        class="w-full text-left p-3 rounded-lg transition-all relative overflow-hidden hover:shadow-md"
                         [ngClass]="{
-                          'hover:bg-white/30 cursor-pointer':
-                            msg.self && !hasVotedInPoll(msg),
-                          'hover:bg-gray-200 cursor-pointer':
-                            !msg.self && !hasVotedInPoll(msg),
-                          'cursor-not-allowed': hasVotedInPoll(msg)
+                          'cursor-not-allowed opacity-50': isRemovedFromGroup,
+                          'bg-purple-100 border-2 border-purple-500':
+                            userVotedForOption(msg, i) && !msg.self,
+                          'bg-white/30 border-2 border-white':
+                            userVotedForOption(msg, i) && msg.self,
+                          'bg-white/10 hover:bg-white/20':
+                            !userVotedForOption(msg, i) && msg.self,
+                          'bg-gray-50 hover:bg-gray-100':
+                            !userVotedForOption(msg, i) && !msg.self
                         }"
                       >
-                        <!-- Background progress bar -->
+                        <!-- Progress bar background -->
                         <div
                           *ngIf="getPollTotalVotes(msg) > 0"
                           class="absolute inset-0 rounded-lg transition-all duration-500 ease-out"
@@ -658,12 +663,11 @@
                           [style.width.%]="getPollVotePercentage(msg, i)"
                         ></div>
 
-                        <!-- Content -->
                         <div
                           class="relative z-10 flex items-center justify-between"
                         >
                           <div class="flex items-center gap-2 flex-1">
-                            <!-- Check mark for user's vote -->
+                            <!-- Checkmark for voted option -->
                             <svg
                               *ngIf="userVotedForOption(msg, i)"
                               class="w-5 h-5 flex-shrink-0"
@@ -679,7 +683,7 @@
                             </svg>
 
                             <span class="text-sm font-medium">{{
-                              option
+                              option.text
                             }}</span>
                           </div>
 
