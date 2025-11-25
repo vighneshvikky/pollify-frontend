@@ -80,7 +80,7 @@ export class SocketService {
     }
 
     this.socket = io(environment.socketUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       query: userId ? { userId } : {},
     });
 

@@ -375,7 +375,6 @@ hasVotedInPoll(msg: Message): boolean {
 
 
   votePoll(messageId: string, optionIndex: number): void {
-    console.log('🗳️ Voting on poll:', { messageId, optionIndex });
     this.socketService.vote(messageId, optionIndex, this.currentUser._id);
   }
 
@@ -384,10 +383,15 @@ hasVotedInPoll(msg: Message): boolean {
   }
 
   updateMessageInList(updated: Message) {
-    console.log('updated', updated);
+   console.log('updated', updated);
     const index = this.messages.findIndex((n) => n._id === updated._id);
     if (index !== -1) {
-      this.messages[index] = updated;
+      
+      const senderIdValue = this.getSenderId(updated);
+      this.messages[index] = {
+        ...updated,
+        self: senderIdValue === this.currentUser._id
+      };
     }
   }
 
